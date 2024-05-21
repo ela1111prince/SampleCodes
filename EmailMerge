@@ -1,0 +1,194 @@
+public static string serviceConfigFile = "appsettings.json";
+        public string GetkeyData(string KeyName)
+        {
+            IConfigurationBuilder builder = new ConfigurationBuilder();
+            builder.AddJsonFile(serviceConfigFile);
+            var config = builder.Build();
+            string ServiceKeyValue = config.GetSection("MailServiceConfig:" + KeyName).Value;
+            return ServiceKeyValue;
+        }
+
+
+////************************************************************************************************
+public void ProcessMail(string ToMailID, string CC, string Subject, string MsgBody)
+        {
+
+ 
+            if (GetkeyData("CanSendMail")?.ToString()=="1")
+            {
+                try
+                {
+ 
+                    /*MailMessage Msg = new MailMessage(GetkeyData("MailFrom").ToString(),  IsDevEnv()? GetkeyData("testmailCC").ToString():ToMailID);
+                    string strMailFrom = GetkeyData("MailFrom");
+                    string MailBody = MsgBody;
+                    Msg.IsBodyHtml = true;
+                    Msg.Subject = Subject;
+                    Msg.CC.Add(IsDevEnv() ? GetkeyData("testmailCC").ToString():CC  );
+                    Msg.Bcc.Add(GetkeyData("testmailCC").ToString());
+                    Msg.Body = MailBody;
+                    SmtpClient Client = new SmtpClient("10.98.134.141", 25);
+                    Client.Send(Msg);*/
+ 
+                    MailMessage mail1 = new MailMessage();
+                    mail1.From = new MailAddress(GetkeyData("MailFrom").ToString());
+ 
+                    string[] ImagesToEmbed = new string[3];
+                    ImagesToEmbed[0] = Directory.GetCurrentDirectory() + "/wwwroot/MailImages/hcl-logo.gif";
+                    ImagesToEmbed[1] = Directory.GetCurrentDirectory() + "/wwwroot/MailImages/mnemonic.gif";
+                    ImagesToEmbed[2] = Directory.GetCurrentDirectory() + "/wwwroot/MailImages/url.gif";
+ 
+                    string tempbody1 = MsgBody;
+                    mail1.Body = tempbody1;
+                    mail1.Subject = Subject;// "IQA Automation";
+                    mail1.To.Add(IsDevEnv() ? GetkeyData("testmailTo").ToString() : ToMailID);
+                    mail1.CC.Add(IsDevEnv() ? GetkeyData("testmailCC").ToString() : CC);
+                    mail1.Bcc.Add(GetkeyData("testmailBcc").ToString());
+                    mail1.IsBodyHtml = true;
+                    AlternateView htmlView = AlternateView.CreateAlternateViewFromString(mail1.Body, null, "text/html");
+ 
+                    if (GetkeyData("AddIMGinMail").ToString() == "1")
+                    {
+                        if (ImagesToEmbed.Length > 0)
+                        {
+                            for (int i = 0; i < ImagesToEmbed.Length; i++)
+                            {
+                                LinkedResource ImageResource = new LinkedResource(ImagesToEmbed[i]);
+                                ImageResource.ContentId = "Image" + i.ToString();
+                                htmlView.LinkedResources.Add(ImageResource);
+                            }
+                        }
+                    }
+                    mail1.AlternateViews.Add(htmlView);
+ 
+                    SmtpClient emailClient = new SmtpClient();
+                    emailClient.Port =Convert.ToInt32(GetkeyData("PortNumber")); //25;
+                    emailClient.Host = GetkeyData("MailServer").ToString();// "10.98.134.141";
+                    string successFlag = "";
+                    try
+                    {
+                        emailClient.Send(mail1);
+                        successFlag = "Y";
+                    }
+                    catch (Exception e)
+                    {
+                        successFlag = "F";
+                        //errorMessage = e.Message;
+                        //ViewBag.ErrorMessage = errorMessage;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log(ex.Message);
+                    throw ex;
+                }
+            }
+            else
+            {
+                string MailBody = "";
+                string ToBox = "";               
+            }
+        }
+
+/************************************************************************************************
+private string buildMail(string TemplateName, DataTable MailContent, DataTable MailDetails)
+        {
+            string path = Directory.GetCurrentDirectory() + "\\wwwroot\\MailTemplates\\" + TemplateName;
+            string fileContent = System.IO.File.ReadAllText(path);
+ 
+            string ToBox = "";
+            if (IsDevEnv() && GetkeyData("CanSendMail")?.ToString() == "0")
+            {
+                ToBox = "<table style='font-size: 17px;'><tr><td style = 'background-color:#f5f5f0;border:solid 1px black;width:300px' >To..</ td ><td></td><td style = 'background-color:#f5f5f0;border:solid 1px black;width: 100%;height: 30px;' id = 'ToAddress'  >" + MailContent.Rows[0]["MTM_ToEmailList"].ToString() + "</ td ></tr><tr><td style = 'background-color:#f5f5f0;border:solid 1px black;' > CC..</td><td></td><td style = 'background-color:#f5f5f0;border:solid 1px black;width: 100%;height: 30px;' id = 'CCAddress'  >" + MailContent.Rows[0]["MTM_CCEmailList"].ToString() + " </td></tr><tr><td> Subject </td><td ></td><td style = 'background-color:#f5f5f0;border:solid 1px black;width: 100%;height: 30px;' id = 'strSubject' width = '80%'  >" + MailContent.Rows[0]["MTM_MailSubject"].ToString() + "</td></tr></table> ";
+            }
+            if (fileContent.Contains("{{ToBox}}", StringComparison.OrdinalIgnoreCase))
+            {
+                fileContent = Regex.Replace(fileContent, "{{ToBox}}", ToBox);
+            }
+ 
+            for (int i = 0; i < MailContent.Columns.Count; i++)
+            {
+                if (fileContent.Contains(MailContent.Columns[i].ColumnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fileContent = Regex.Replace(fileContent, "{{" + MailContent.Columns[i].ColumnName + "}}", MailContent.Rows[0][MailContent.Columns[i].ColumnName?.ToString()]?.ToString());
+                }
+            }
+ 
+            for (int i = 0; i < MailDetails.Columns.Count; i++)
+            {
+                if (fileContent.Contains(MailDetails.Columns[i].ColumnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    fileContent = Regex.Replace(fileContent, "{{" + MailDetails.Columns[i].ColumnName + "}}", MailDetails.Rows[0][MailDetails.Columns[i].ColumnName?.ToString()]?.ToString());
+                }
+            }
+            string SubjectData = MailContent.Rows[0]["MTM_MailSubject"].ToString();
+            //Subject Change
+            for (int i = 0; i < MailDetails.Columns.Count; i++)
+            {
+                if (SubjectData.Contains(MailDetails.Columns[i].ColumnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    SubjectData = Regex.Replace(SubjectData, "{{" + MailDetails.Columns[i].ColumnName + "}}", MailDetails.Rows[0][MailDetails.Columns[i].ColumnName?.ToString()]?.ToString());
+                }
+            }
+ 
+            if (fileContent.Contains("{{MultiRowMailContent}}", StringComparison.OrdinalIgnoreCase))
+            {
+                Regex.Replace(fileContent, "{{MultiRowMailContent}}", ConvertDataTableToHTML(MailDetails));
+            }
+ 
+            string currentURL = GetkeyData("HostedURL") + _HttpContextAccessor.HttpContext?.Request?.Path.ToString() + _HttpContextAccessor.HttpContext?.Request?.QueryString.ToString();
+            if (fileContent.Contains("{{CURRENTURL}}", StringComparison.OrdinalIgnoreCase))
+            {
+                fileContent=Regex.Replace(fileContent, "{{CURRENTURL}}", currentURL);
+            }
+            ProcessMail(MailContent.Rows[0]["MTM_ToEmailList"].ToString(), MailContent.Rows[0]["MTM_CCEmailList"].ToString(), SubjectData, fileContent);
+ 
+            return fileContent;
+        }
+
+/***********************************************************************/
+public static string ConvertDataTableToHTML(DataTable dt)
+        {
+            string html = "<table>";
+            //add header row
+            html += "<tr>";
+            for (int i = 0; i < dt.Columns.Count; i++)
+                html += "<td class='rB'>" + dt.Columns[i].ColumnName + "</td>";
+            html += "</tr>";
+            //add rows
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                html += "<tr>";
+                for (int j = 0; j < dt.Columns.Count; j++)
+                    html += "<td class='rA'>" + dt.Rows[i][j].ToString() + "</td>";
+                html += "</tr>";
+            }
+            html += "</table>";
+            return html;
+        }
+ 
+        public void Log(string message)
+        {
+            Logging logging = new Logging();
+            logging.Actionname = message;
+            logging.userid = "-1";
+            logging.pageName = message;
+            string serviceConfigFile = "iqa_services_config.json";
+            IConfigurationBuilder builder = new ConfigurationBuilder();
+            builder.AddJsonFile(serviceConfigFile);
+            var config = builder.Build();
+            string serviceBaseURL = config.GetSection("IQA_ServiceConfig:servicebasepath").Value;
+            using (var client1 = new HttpClient())
+            {
+                client1.BaseAddress = new Uri(serviceBaseURL);
+                client1.DefaultRequestHeaders.Clear();
+                var myContent = JsonConvert.SerializeObject(logging);
+                var buffer = System.Text.Encoding.UTF8.GetBytes(myContent);
+                var byteContent = new ByteArrayContent(buffer);
+                byteContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                client1.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var Res = client1.PostAsync("AppLogging/Logging", byteContent).GetAwaiter().GetResult();
+            }
+        }
+ 
+    }
