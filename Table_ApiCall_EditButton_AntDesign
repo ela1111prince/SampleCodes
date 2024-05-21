@@ -1,0 +1,154 @@
+import React, { useState, useEffect, useRef } from "react";
+import TableFilter from "../../../Components/TableFilter";
+import { Space, Table, Tag } from "antd";
+import { Button } from "antd";
+import WebServiceCaller from "../../../utils/WebServiceCaller";
+import ClusterForm from "./ClusterForm";
+ 
+const ClusterManagement = () => {
+  const ref = useRef();
+ 
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [postdata, setpostdata] = useState({
+    filter: "F",
+    region: "N",
+    cluster: "N",
+    qmCode: "0"
+  });
+ 
+ 
+  const handleEdit = (Region, RegionCode, RegionHead, IsActive) => {
+    onFill(Region, RegionCode, RegionHead, IsActive);
+  };
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+     
+      const response = await WebServiceCaller("ClusterManagement/GetAllClusters","post",postdata,"");
+      setData(response.data);
+ 
+     
+      setLoading(false);
+     
+    } catch (error) {
+      setLoading(false);
+      console.error("Error fetching data:", error);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, []);
+ 
+  const columns = [
+   
+   
+    {
+      title: "Region",
+      dataIndex: "Region",
+ 
+      width: "25%",
+      ...TableFilter("Region"),
+      sorter: (a, b) => {
+        return a.Region.localeCompare(b.Region)
+      },
+      sortDirections: ["descend", "ascend"],
+      align: "center",
+    },
+    {
+      title: "RegionHead",
+      dataIndex: "RegionHead",
+ 
+      width: "30%",
+      ...TableFilter("RegionHead"),
+      sorter: (a, b) => {
+        return a.RegionHead?.toLowerCase().localeCompare(b.RegionHead?.toLowerCase())
+      },
+      sortDirections: ["descend", "ascend"],
+      align: "center",
+    },
+    {
+      title: "Cluster",
+      dataIndex: "Cluster",
+ 
+      width: "30%",
+      ...TableFilter("Cluster"),
+      sorter: (a, b) => {
+        return a.RegionHead?.toLowerCase().localeCompare(b.RegionHead?.toLowerCase())
+      },
+      sortDirections: ["descend", "ascend"],
+      align: "center",
+    },
+    {
+      title: "QM",
+      dataIndex: "QM",
+ 
+      width: "30%",
+      ...TableFilter("QM"),
+      sorter: (a, b) => {
+        return a.QM?.toLowerCase().localeCompare(b.QM?.toLowerCase())
+      },
+      sortDirections: ["descend", "ascend"],
+      align: "center",
+    },
+    {
+      title: "Status",
+      dataIndex: "IsActive",
+ 
+      width: "15%",
+      render: (_, record) => (
+        <Tag
+          color={record.IsActive ? "green" : "volcano"}
+          key={record.IsActive}
+        >
+          {record.IsActive ? "Active" : "InActive"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Edit",
+      dataIndex: "RegionCode",
+ 
+      width: "15%",
+      render: (_, record) => (
+        <Button
+          type="primary"
+          onClick={() =>
+            ref.current.handleEdit(
+              record.RegionHead,
+              record.Cluster,
+              record.Region,
+              record.QM,
+              record.IsActive,
+              record.ClusterCode,
+              record.QMCode,
+              record.RegionCode
+            )
+          }
+        >
+          Edit
+        </Button>
+      ),
+    },
+  ];
+ 
+  return (
+    <>
+      <center>
+        <div className="formContainer">
+          <ClusterForm ref={ref} fetchData={fetchData}></ClusterForm>
+        </div>
+        <div className="TableContainer">
+          <Table
+          columns={columns}
+          bordered
+          dataSource={data}
+          loading={loading}
+ 
+            />
+        </div>
+      </center>
+    </>
+  );
+};
+export default ClusterManagement;
