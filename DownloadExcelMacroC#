@@ -1,0 +1,97 @@
+public IActionResult CreateExcelTemplateForDownload(string LobCode, string LobName, string Quarter)
+        {
+            try
+            {
+                FileInfo fileq = null;
+                string filename = "";
+                DataSet dsExlDetails = new DataSet();
+                string webRootPath = _webHostEnvironment.WebRootPath;
+ 
+                string path = "";
+                path = Path.Combine(webRootPath, "Content/PSC_TemplateV1_R2.xlsm");
+                fileq = new FileInfo(path);
+                filename = "PSC_Automation_" + LobName + "_" + Quarter.Replace('\'','_') + "_" + System.DateTime.Now.ToString().Replace(' ','_');
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using (ExcelPackage pck = new ExcelPackage(fileq))
+ 
+                {
+                    int sheetcount = pck.Workbook.Worksheets.Count;
+ 
+ 
+                    Utilities.GetEmpData getEmpData = new Utilities.GetEmpData(_HttpContextAccessor);
+ 
+ 
+                    using (var client1 = new HttpClient())
+                    {
+ 
+ 
+                        client1.BaseAddress = new Uri(GetPSLurl.GetKey("PscUrlIntra"));
+ 
+                        client1.DefaultRequestHeaders.Clear();
+ 
+ 
+                        client1.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        if (GetPSLurl.GetKey("DevEnv")?.ToString() == "0")
+                        {
+                            client1.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", GetPSLurl.GetKey("SubscriptionKey"));
+                            client1.DefaultRequestHeaders.Add("Authorization", "Bearer " + GetPSLurl.GetAccessTokenForIPfilter());
+                        }
+                        HttpResponseMessage Res = client1.GetAsync("DemandCreation/GetDemandCreationSkillsExcelResult?LobCode=" + LobCode).GetAwaiter().GetResult();
+                        if (Res.IsSuccessStatusCode)
+                        {
+ 
+                            var Response = Res.Content.ReadAsStringAsync().Result;
+ 
+                            dsExlDetails = JsonConvert.DeserializeObject<DataSet>(Response);
+                        }
+                    }
+ 
+                    if (dsExlDetails.Tables.Count > 4)
+                    {
+                        ExcelWorksheet datasheect = pck.Workbook.Worksheets["DataMain"];
+                        ExcelWorksheet SkillSheet = pck.Workbook.Worksheets["Skillls"];
+                        ExcelWorksheet LocationSheet = pck.Workbook.Worksheets["Location"];
+                        ExcelWorksheet List = pck.Workbook.Worksheets["List"];
+                        ExcelWorksheet CohortSheet = pck.Workbook.Worksheets["Cohort_Demand_Category"];
+ 
+                        dsExlDetails.Tables[1].Columns.Remove("skillCategoryCode");
+                        dsExlDetails.Tables[1].Columns.Remove("skillCode");
+ 
+ 
+                        datasheect.Cells["A2"].LoadFromDataTable(dsExlDetails.Tables[4], false);
+                        SkillSheet.Cells["A2"].LoadFromDataTable(dsExlDetails.Tables[1], false);
+                        LocationSheet.Cells["A2"].LoadFromDataTable(dsExlDetails.Tables[5], false);
+                        List.Cells["J2"].LoadFromDataTable(dsExlDetails.Tables[2], false);//Month
+ 
+ 
+                        DataView DV = new DataView(dsExlDetails.Tables[0]);
+                        DV.RowFilter = "listType = 'Cohort Demand Category'";
+                        DataTable table1 = DV.ToTable(true, "listValue");
+                        CohortSheet.Cells["A2"].LoadFromDataTable(table1, false);
+ 
+                        DataView DV1 = new DataView(dsExlDetails.Tables[0]);
+                        DV1.RowFilter = "listType = 'Cohort Demand SubCategory'";
+                        DataTable table2 = DV.ToTable(true, "listValue");
+                        CohortSheet.Cells["B2"].LoadFromDataTable(table2, false);
+ 
+                        ExcelWorksheet wsConfig = pck.Workbook.Worksheets["Config"];
+                        wsConfig.Cells["B1"].Value = LobCode;
+                        wsConfig.Cells["B2"].Value = 1000;
+                        wsConfig.Cells["B4"].Value = getEmpData.GetEmpSAPID(); //"52040834";// _HttpContextAccessor.HttpContext.User.Identity.Name.ToString();
+                        wsConfig.Cells["B5"].Value = Quarter;
+                        wsConfig.Cells["B3"].Value = 0;
+ 
+                        Byte[] fileBytes = pck.GetAsByteArray();
+                        return File(fileBytes, "application/vnd.ms-excel.sheet.macroEnabled.12", filename + ".xlsm");
+ 
+                    }
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+ 
+ 
+        }
