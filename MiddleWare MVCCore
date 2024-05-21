@@ -1,0 +1,67 @@
+using IQA_AutomationMVC.Utilities;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
+ 
+namespace IQA_AutomationMVC.Middleware
+{
+    // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
+    public class Middleware
+    {
+        private readonly RequestDelegate _next;
+ 
+        public Middleware(RequestDelegate next)
+        {
+            _next = next;
+        }
+ 
+        public async Task Invoke(HttpContext httpContext)
+        {
+ 
+            try
+            {
+ 
+                if (httpContext.Request.Cookies != null)
+                {
+                    if (httpContext.Request.Cookies.Keys != null){
+                        if (httpContext.Request.Cookies.Keys.Count() > 0)
+                        {
+                            var CookieCount = httpContext.Request.Cookies.Keys.Count();
+                            var CookieArr = httpContext.Request.Cookies.Keys;
+                            var sessionID = httpContext.Session.Id;
+                            for (int i = 0; i < CookieCount; i++)
+                            {
+                                CookieOptions options = new CookieOptions();
+                                options.Expires = DateTime.Now.Add(TimeSpan.FromMinutes(30));
+                                options.Path = httpContext.Request.Path;
+                                options.Secure = true;
+                                options.HttpOnly = true;
+                                options.SameSite = SameSiteMode.Lax;
+                                //httpContext.Response.Cookies.Delete(CookieArr.ToList()[i]);
+                                httpContext.Response.Cookies.Append(CookieArr.ToList()[i], sessionID, options);
+                            }
+                        }
+                    } 
+                }
+ 
+ 
+ 
+                await _next(httpContext);
+            }
+            catch (Exception ex)
+            {
+                AppLogging appLogging = new AppLogging();
+                appLogging.Log(ex.Message);
+            }
+        }
+    }
+ 
+    // Extension method used to add the middleware to the HTTP request pipeline.
+    public static class MiddlewareExtensions
+    {
+        public static IApplicationBuilder UseMiddleware(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<Middleware>();
+        }
+    }
+}
