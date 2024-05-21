@@ -1,0 +1,248 @@
+[Yesterday 5:17 PM] Elavarasan V
+import React from 'react';
+import { Select } from 'antd';
+const App = () => (
+  <Select
+    showSearch
+    style={{
+      width: 200,
+    }}
+    placeholder="Search to Select"
+    optionFilterProp="children"
+    filterOption={(input, option) => (option?.label ?? '').includes(input)}
+    filterSort={(optionA, optionB) =>
+      (optionA?.label ?? '').toLowerCase().localeCompare((optionB?.label ?? '').toLowerCase())
+    }
+    options={[
+      {
+        value: '1',
+        label: 'Not Identified',
+      },
+      {
+        value: '2',
+        label: 'Closed',
+      },
+      {
+        value: '3',
+        label: 'Communicated',
+      },
+      {
+        value: '4',
+        label: 'Identified',
+      },
+      {
+        value: '5',
+        label: 'Resolved',
+      },
+      {
+        value: '6',
+        label: 'Cancelled',
+      },
+    ]}
+  />
+);
+export default App;
+[Yesterday 5:22 PM] Elavarasan V
+import React from 'react';
+
+import { Select } from 'antd';
+
+const App = () => (
+
+  <Select
+
+    showSearch
+
+    style={{
+
+      width: 200,
+
+    }}
+
+    placeholder="Search to Select"
+
+    optionFilterProp="children"
+
+    filterOption={(input, option) => (option?.label ?? '').includes(input)}
+
+    filterSort={(optionA, optionB) =>
+
+      (optionA?.label ?? '').toLowerCase().localeCompare((optionB?.label ?? '').toLowerCase())
+
+    }
+
+    options={[
+
+      {
+
+        value: '1',
+
+        label: 'Not Identified',
+
+      },
+
+      {
+
+        value: '2',
+
+        label: 'Closed',
+
+      },
+
+      {
+
+        value: '3',
+
+        label: 'Communicated',
+
+      },
+
+      {
+
+        value: '4',
+
+        label: 'Identified',
+
+      },
+
+      {
+
+        value: '5',
+
+        label: 'Resolved',
+
+      },
+
+      {
+
+        value: '6',
+
+        label: 'Cancelled',
+
+      },
+
+    ]}
+
+  />
+
+);
+
+export default App;
+[5:00 PM] Elavarasan V
+import React, { useRef, useState } from 'react';
+import { SearchOutlined }
+ from '@ant-design/icons';
+import { Button, Input, Space, Table } from 'antd';
+import Highlighter from 'react-highlight-words';
+const TableFilter=(data)=>{
+const [searchText, setSearchText] = useState('');
+  const [searchedColumn, setSearchedColumn] = useState('');
+  const searchInput = useRef(null);
+  const handleSearch = (selectedKeys, confirm, dataIndex) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+  const handleReset = (clearFilters) => {
+    clearFilters();
+    setSearchText('');
+  };
+  const getColumnSearchProps = (dataIndex) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }) => (
+      <div
+        style={{
+          padding: 8,
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => handleSearch(selectedKeys, confirm, dataIndex)}
+          style={{
+            marginBottom: 8,
+            display: 'block',
+          }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys, confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{
+              width: 90,
+            }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters)}
+            size="small"
+            style={{
+              width: 90,
+            }}
+          >
+            Reset
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              confirm({
+                closeDropdown: false,
+              });
+              setSearchText(selectedKeys[0]);
+              setSearchedColumn(dataIndex);
+            }}
+          >
+            Filter
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              close();
+            }}
+          >
+            close
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered) => (
+      <SearchOutlined
+        style={{
+          color: filtered ? '#1677ff' : undefined,
+        }}
+      />
+    ),
+    onFilter: (value, record) =>
+      record[dataIndex].toString().toLowerCase().includes(value.toLowerCase()),
+    onFilterDropdownOpenChange: (visible) => {
+      if (visible) {
+        setTimeout(() => searchInput.current?.select(), 100);
+      }
+    },
+    render: (text) =>
+      searchedColumn === dataIndex ? (
+        <Highlighter
+          highlightStyle={{
+            backgroundColor: '#ffc069',
+            padding: 0,
+          }}
+          searchWords={[searchText]}
+          autoEscape
+          textToHighlight={text ? text.toString() : ''}
+        />
+      ) : (
+        text
+      ),
+  });
+  return getColumnSearchProps(data);
+ 
+}
+ 
+export default  TableFilter;
