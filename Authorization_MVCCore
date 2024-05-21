@@ -1,0 +1,125 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Newtonsoft.Json;
+using PSCMVCCore.Models;
+using PSCMVCCore.Utilities;
+using System.Configuration;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+namespace PSCMVCCore.Infrastructure
+{
+    public class CustomAuthorizationFilterAttribute : Attribute, IAuthorizationFilter
+    {
+ 
+ 
+        List<CheckAuthenticationResult> AuthenticationResults = new List<CheckAuthenticationResult>();
+ 
+        public string _CurrentURL;
+        public string _EmpCode;
+        public CustomAuthorizationFilterAttribute(string CurrentURL)
+        {
+            _CurrentURL = CurrentURL;
+        }
+        public void OnAuthorization(AuthorizationFilterContext context)
+        {
+            IHttpContextAccessor HttpContextAccessor = new HttpContextAccessor();
+ 
+            GetAuthorizationData getAuthorization = new GetAuthorizationData(HttpContextAccessor);
+            AuthenticationResults = (List<CheckAuthenticationResult>)getAuthorization.GetCheckAuthenticationResults(_CurrentURL);
+ 
+ 
+            if (AuthenticationResults != null)
+            {
+                if (AuthenticationResults.Count > 0)
+                {
+                    if (AuthenticationResults[0].IsAuthorized.ToString().ToLower().Trim() == "yes")
+                    {
+                    }
+                    else
+                    {
+                        context.Result = new RedirectToRouteResult(new RouteValueDictionary
+                        {
+                        { "controller", "Login" },   // Change "Account" to your login controller name
+                        { "action", "Login" }       // Change "Login" to your login action method name
+                        });
+                    }
+                }
+                else
+                {
+                    context.Result = new RedirectToRouteResult(new RouteValueDictionary
+                        {
+                        { "controller", "Login" },   // Change "Account" to your login controller name
+                        { "action", "Login" }       // Change "Login" to your login action method name
+                        });
+                }
+            }
+            else
+            {
+                context.Result = new RedirectToRouteResult(new RouteValueDictionary
+                        {
+                        { "controller", "Login" },   // Change "Account" to your login controller name
+                        { "action", "Login" }       // Change "Login" to your login action method name
+                        });
+            }
+ 
+        }
+ 
+ 
+    }
+}
+ 
+class GetAuthorizationData
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    public GetAuthorizationData(IHttpContextAccessor httpContextAccessor)
+    {
+ 
+        _httpContextAccessor = httpContextAccessor;
+ 
+    }
+    public IEnumerable<CheckAuthenticationResult> GetCheckAuthenticationResults(string CurrentURL)
+    {
+ 
+        GetEmpData EmpData = new GetEmpData(_httpContextAccessor);
+        //ToDataTableCLS DT_Convert = new ToDataTableCLS();
+        List<CheckAuthenticationResult> authenticationResults = new List<CheckAuthenticationResult>();
+ 
+ 
+ 
+        using (var client1 = new HttpClient())
+        {
+ 
+            GetEmpData getEmpData = new GetEmpData(_httpContextAccessor);
+ 
+            client1.BaseAddress = new Uri(GetPSLurl.GetKey("PscUrlIntra"));
+ 
+            client1.DefaultRequestHeaders.Clear();
+ 
+ 
+            client1.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (GetPSLurl.GetKey("DevEnv")?.ToString() == "0")
+            {
+                client1.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", GetPSLurl.GetKey("SubscriptionKey"));
+                client1.DefaultRequestHeaders.Add("Authorization", "Bearer " + GetPSLurl.GetAccessTokenForIPfilter());
+            }
+            HttpResponseMessage Res = client1.GetAsync("PlanCreation/GetCheckAuthorization?URL=" + CurrentURL + "&sapID=" + EmpData.GetEmpSAPID()).GetAwaiter().GetResult();
+            if (Res.IsSuccessStatusCode)
+            {
+ 
+                var Response = Res.Content.ReadAsStringAsync().Result;
+ 
+                authenticationResults = JsonConvert.DeserializeObject<List<CheckAuthenticationResult>>(Response);
+            }
+        }
+ 
+        //DataTable DT = ToDataTableCLS.ToDataTable(roleListMasters);
+        //return DT;
+        if (authenticationResults == null)
+        {
+            return null;
+        }
+        return authenticationResults.ToList();
+ 
+    }
+ 
+}
