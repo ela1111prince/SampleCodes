@@ -1,0 +1,135 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using OfficeOpenXml;
+using PSCMVCCore.Models;
+using PSCMVCCore.Infrastructure;
+using PSCMVCCore.Utilities;
+using System.ComponentModel;
+using System.Data;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting.Server;
+using System.Web;
+using LicenseContext = OfficeOpenXml.LicenseContext;
+public IActionResult FileUpload(IFormFile File)
+        {
+            string Quarter = Request.Form["Quarter"];
+            string LobCode = Request.Form["LobCode"];
+            var filePath = Path.GetTempFileName();
+            FileInfo fileq = null;
+ 
+            //HttpPostedFileBase file = Request.Files[0];
+            // file = Request.Files[0];
+            var Stream = new FileStream(filePath, FileMode.Create);
+            File.CopyTo(Stream);
+ 
+            Utilities.GetEmpData getEmpData = new Utilities.GetEmpData(_HttpContextAccessor);
+            var sapid = getEmpData.GetEmpSAPID();
+ 
+            PCD_List = new List<DemandCreation>();
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using (ExcelPackage pck = new ExcelPackage(Stream))
+ 
+            {
+                if (!(pck.Workbook.Worksheets.Any(sheet => sheet.Name == "Detailed_Demand")) || !(pck.Workbook.Worksheets.Any(sheet => sheet.Name == "Config")))
+                {
+                    return Json(HttpUtility.HtmlEncode("-1"));
+                }
+                ExcelWorksheet wsConfig = pck.Workbook.Worksheets["Config"];
+                if ((wsConfig.Cells["B4"].Value == null ? "" : wsConfig.Cells["B4"].Value.ToString()) != (sapid))
+                {
+                    return Json("Excel which you are uploading is not downloaded by you");
+                }
+                if ((wsConfig.Cells["B5"].Value == null ? "" : wsConfig.Cells["B5"].Value.ToString()) != Quarter)
+                {
+                    return Json("Please download excel for " + Quarter);
+                }
+                if ((wsConfig.Cells["B1"].Value == null ? "" : wsConfig.Cells["B1"].Value.ToString()) != LobCode)
+                {
+                    return Json("Please download excel for " + LobCode);
+                }
+ 
+                ExcelWorksheet wsdata = pck.Workbook.Worksheets["Detailed_Demand"];
+                int colCount = wsdata.Dimension.End.Column;  //get Column Count
+                int rowCount = wsdata.Dimension.End.Row;
+                string[] PrimarSkillArr = null;
+                string[] ProjectArr = null;
+                string[] LevelsArr = null;
+                string[] customer = null;
+                string[] SkillCategoryArr = null;
+                for (int row = 2; row <= rowCount; row++)
+                {
+                    DemandCreation PCD = new DemandCreation();
+ 
+                    for (int col = 1; col <= colCount; col++)
+                    {
+                        try
+                        {
+                            PCD.SessionId = HttpContext.Session.Id;// "SessionID_elavarasan.v";
+                            if (col == 1)
+                            {
+                                if (wsConfig.Cells["B1"].Value != null)
+                                {
+                                    PCD.L0 = wsConfig.Cells["B1"].Value.ToString();//(wsdata.Cells[row, col].Value.ToString().Trim()); ;//Convert.ToInt32(wsdata.Cells[row, col].Value);
+ 
+ 
+                                }
+                                else
+                                {
+                                    break;
+                                    PCD.L0 = (wsdata.Cells[row, col].Value.ToString().Trim()); ;
+                                }
+ 
+                            }
+                            if (col == 2)
+                            {
+                                if (wsConfig.Cells["B1"].Value != null)
+                                {
+                                    PCD.L1 = wsConfig.Cells["B1"].Value.ToString();// (wsdata.Cells[row, col].Value.ToString().Trim());
+                                                                                   //LevelsArr = PCD.L1.Split('(');//[BTIS , 50303896)]
+                                                                                   //PCD.L1 = LevelsArr[LevelsArr.Length - 1].Remove(LevelsArr[LevelsArr.Length - 1].Length - 1);//50303896
+ 
+                                    //PCD.L1 = PCD.L1.Substring(PCD.L1.Length - 9, 8);
+                                }
+                                else
+                                {
+                                    PCD.L1 = "";
+                                }
+                            }
+                            if (col == 3)
+                            {
+                                if (wsdata.Cells[row, col].Value != null)
+                                {
+                                    PCD.L2 = (wsdata.Cells[row, col].Value.ToString().Trim());
+                                    LevelsArr = PCD.L2.Split('(');//[BTIS , 50303896)]
+                                    if (LevelsArr.Length > 1)
+                                    {
+                                        PCD.L2 = LevelsArr[LevelsArr.Length - 1].Remove(LevelsArr[LevelsArr.Length - 1].Length - 1);//50303896
+                                    }
+                                    else
+                                    {
+                                        return Json("Please provide valid L2 data in Excel");
+                                    }
+                                    //PCD.L2 = PCD.L2.Substring(PCD.L2.Length - 9, 8);
+                                }
+                                else
+                                {
+                                    break;
+                                    PCD.L2 = "";
+                                }
+                            }
+                           }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+                    }
+                    if (wsdata.Cells[row, 3].Value != null)
+                    {
+                        PCD_List.Add(PCD);
+                    }
+                }
+                return Json(PCD_List);
+            }
