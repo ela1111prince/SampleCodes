@@ -1,0 +1,205 @@
+import React, { forwardRef, useImperativeHandle,useState, useEffect } from "react";
+import AlertModal from "../../../Components/ModalPopup/AlertModal";
+import WebServiceCaller from "../../../utils/WebServiceCaller";
+import { Button, Form, Input,Switch,Space,Select } from 'antd';
+ 
+const ClusterForm = forwardRef((props, ref) => {
+ 
+    const [form] = Form.useForm();
+    const [RegionData, setRegionData] = useState([]);
+ 
+  const[ButtonText,SetButtonText]=useState("Submit");
+  const onFinish=async(e)=>{
+    console.log(e);
+    let postdata={
+      regionCode: e.Region,
+      qmCode: e.QM,
+      oldQMCode: e.QMCode,
+      status: e.status,
+      clusterID: e.ClusterCode,
+      flag: (ButtonText=="Submit"?"":"U"),
+      cluster: e.cluster
+    }
+   
+ 
+    const response = await WebServiceCaller(
+      "ClusterManagement/InsertUpdateClusterDetails",
+      "post",
+      postdata,
+      ""
+    );
+    props.fetchData();
+ 
+    if(postdata.flag=="U"){
+      AlertModal(response.data,"success");
+    }
+    else{
+      AlertModal(response.data,"warning");
+ 
+    }
+   
+  }
+ 
+  const onFinishFailed=(e)=>{
+    console.log(e);
+  }
+ 
+useImperativeHandle(ref, () => ({
+  handleEdit(RegionHead,Cluster,Region,QM,IsActive,ClusterCode,QMCode,RegionCode){
+    form.setFieldsValue({
+      Region: RegionCode,
+      Cluster: Cluster,
+      QM:QMCode,
+      ClusterCode:ClusterCode,
+      QMCode:QMCode==null?"":QMCode,
+      status:IsActive
+    });
+    SetButtonText("Update");
+  }
+}));
+ 
+const clearData=()=>{
+  form.setFieldsValue({
+    Region: "",
+    Cluster: "",
+    QM:"",
+    status:true,
+    ClusterCode:"",
+    QMCode:""
+  });
+  SetButtonText("Submit");
+}
+ 
+const FetchRegionData=async()=>{
+  const response = await WebServiceCaller(
+    "RegionManagement/GetAllActiveRegion",
+    "get",
+    "",
+    ""
+  );
+  var Rdata=response.data
+  Rdata.forEach(function(obj){
+    obj.value=obj.RegionCode;
+    obj.label=obj.Region;
+    delete obj.RegionCode;
+  delete obj.Region;
+  })
+  setRegionData(Rdata);
+ 
+}
+ 
+useEffect(() => {
+  FetchRegionData();
+ 
+}, []);
+ 
+  return (
+    <Form
+      name="basic"
+      labelCol={{
+        span: 8,
+      }}
+      wrapperCol={{
+        span: 16,
+      }}
+      style={{
+        maxWidth: 600,
+      }}
+      initialValues={{
+        remember: true,
+      }}
+      onFinish={onFinish}
+      onFinishFailed={onFinishFailed}
+      autoComplete="off"
+      form={form}
+    >
+      <div className="Header">Cluster Management</div>
+      <Form.Item
+        label="Region"
+        name="Region"
+        rules={[
+          {
+            required: true,
+            message: "Please enter Region Name",
+          },
+        ]}
+      >
+        <Select
+    showSearch
+    placeholder="Search to Select"
+    optionFilterProp="children"
+    filterOption={(input, option) => (option?.label.toLowerCase() ?? '').includes(input.toLowerCase())}
+    filterSort={(optionA, optionB) =>
+      (optionA?.label ?? '').toLowerCase().localeCompare((optionB?.label ?? '').toLowerCase())
+    }
+    options={RegionData}
+  />
+      </Form.Item>
+ 
+      <Form.Item
+        label="Cluster Name"
+        name="Cluster"
+        rules={[
+          {
+            required: true,
+            message: "Please enter Cluster Name",
+          },
+        ]}
+      >
+        <Input placeholder="Please enter Cluster Name" />
+      </Form.Item>
+ 
+      <Form.Item
+        label="QM Code"
+        name="QM"
+        type="number"
+        rules={[
+          {
+            required: true,
+            message: "Please enter QM Code",
+          },
+        ]}
+      >
+        <Input type="number" placeholder="Please enter QM code" />
+      </Form.Item>
+      <Form.Item
+        label="Status"
+        name="status"
+        initialValue={true}
+        wrapperCol={{
+          offset: -2,
+          span: 1,
+        }}
+        valuePropName="checked"
+      >
+        <Switch defaultChecked />
+      </Form.Item>
+      <Form.Item name="ClusterCode" hidden={true}>
+          <Input type="hidden"/>
+      </Form.Item>
+      <Form.Item name="QMCode" hidden={true}>
+          <Input type="hidden"/>
+      </Form.Item>
+ 
+      <Form.Item
+         wrapperCol={{
+          offset: 8,
+          span: 3,
+         }}
+       
+      >
+        <Space>
+         <Button type="primary" htmlType="submit">
+          {ButtonText}
+        </Button>
+        <Button type="primary" onClick={clearData}>
+          Reset
+        </Button>
+        </Space>
+      </Form.Item>
+    </Form>
+ 
+  )
+})
+ 
+export default ClusterForm
