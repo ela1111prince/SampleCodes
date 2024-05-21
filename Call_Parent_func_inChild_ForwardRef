@@ -1,0 +1,30 @@
+import React, { useRef } from 'react';
+
+const ParentComponent = () => {
+  const parentFunction = () => {
+    console.log("Parent function called from child");
+  };
+
+  const childRef = useRef(null);
+
+  return (
+    <div>
+      <ChildComponent ref={childRef} parentFunction={parentFunction} />
+    </div>
+  );
+};
+
+const ChildComponent = React.forwardRef((props, ref) => {
+  const handleClick = () => {
+    // Call parent function from child component using ref
+    props.parentFunction();
+  };
+
+  return (
+    <div>
+      <button onClick={handleClick}>Call Parent Function</button>
+    </div>
+  );
+});
+
+export default ParentComponent;
